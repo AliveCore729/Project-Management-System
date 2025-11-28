@@ -9,13 +9,23 @@ const API = axios.create({
   },
 });
 
-// ----- OPTIONAL BUT HIGHLY RECOMMENDED -----
+// Add token to every request if available in localStorage
+API.interceptors.request.use((config) => {
+  const token = localStorage.getItem("authToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Auto-logout when session expired (401)
 API.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response && err.response.status === 401) {
       console.warn("⛔ Session expired. Redirecting to login...");
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("teacher");
       window.location.href = "/";
     }
     return Promise.reject(err);

@@ -18,7 +18,16 @@ async function googleSignIn(req, res) {
       process.env.JWT_SECRET,
       { expiresIn: "8h" }
     );
-    res.cookie("session", token, { httpOnly: true, sameSite: "lax" });
+    res.cookie("session", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 8 * 60 * 60 * 1000,
+      domain: "localhost",
+      path: "/"
+    });
+
+
     res.json({ ok: true, teacher });
   } catch (e) {
     console.error(e);

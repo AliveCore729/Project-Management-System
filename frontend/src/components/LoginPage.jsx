@@ -26,16 +26,31 @@ export default function LoginPage({ onLogin }) {
   }, []);
 
   async function handleCredentialResponse(resp) {
-    try {
-      const res = await API.post("/auth/google", {
-        id_token: resp.credential,
-      });
+  try {
+    // Send ID token to backend
+    const res = await API.post("/auth/google", { id_token: resp.credential });
 
-      onLogin(res.data.teacher);
-    } catch (err) {
-      alert(err.response?.data?.error || "Login failed");
+    // Store token in localStorage for persistence across page refreshes
+    if (res.data.token) {
+      localStorage.setItem("authToken", res.data.token);
     }
+
+    // Wait 100ms to ensure cookie is stored (important for Chrome)
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Verify cookie exists by calling /auth/me
+    const me = await API.get("/auth/me");
+
+    // Store teacher data in localStorage
+    localStorage.setItem("teacher", JSON.stringify(me.data.teacher));
+
+    // Login successful
+    onLogin(me.data.teacher);
+  } catch (err) {
+    alert(err.response?.data?.error || "Login failed");
   }
+}
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">

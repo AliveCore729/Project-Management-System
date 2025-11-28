@@ -13,10 +13,18 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173",
+    origin: "http://localhost:5173",
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
+  next();
+});
+
 
 const upload = multer({ dest: "uploads/" });
 
@@ -278,6 +286,12 @@ app.get("/student/:regNo/group", authMiddleware, async (req, res) => {
 
   res.json({ group });
 });
+
+app.get("/auth/me", authMiddleware, async (req, res) => {
+  const teacher = await Teacher.findOne({ email: req.user.email });
+  res.json({ ok: true, teacher });
+});
+
 
 
 
