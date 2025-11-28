@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pms-backend
+    restart: unless-stopped
+    env_file:
+      - .env           # root env (contains MONGO_URI, JWT_SECRET, GOOGLE_CLIENT_ID, PORT, FRONTEND_ORIGIN)
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/usr/src/app:cached
+    depends_on: []
+    command: ["node", "server.js"]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pms-frontend
+    restart: unless-stopped
+    env_file:
+      - .env           # copy VITE_API_URL or leave default
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/usr/src/app:cached
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
