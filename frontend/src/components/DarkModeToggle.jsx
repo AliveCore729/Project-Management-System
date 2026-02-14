@@ -3,17 +3,10 @@ import React, { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { motion } from "framer-motion";
 
-/**
- * YouTube-style dark mode toggle.
- * - Smooth animations
- * - Strong visual feedback
- * - Remembers theme using localStorage ("pm_theme")
- */
 
 export default function DarkModeToggle() {
   const [isDark, setIsDark] = useState(false);
 
-  // Load theme on first render WITHOUT flicker
   useEffect(() => {
     const saved = localStorage.getItem("pm_theme");
 
@@ -24,14 +17,11 @@ export default function DarkModeToggle() {
       document.documentElement.classList.remove("dark");
       setIsDark(false);
     } else {
-      // If not saved, use system preference
       const prefers = window.matchMedia("(prefers-color-scheme: dark)").matches;
       setIsDark(prefers);
       if (prefers) document.documentElement.classList.add("dark");
     }
   }, []);
-
-  // Apply theme on toggle
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add("dark");

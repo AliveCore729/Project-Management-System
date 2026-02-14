@@ -38,7 +38,6 @@ export default function GroupCard({ group, onOpen, onRefresh }) {
             transition={{ duration: 0.22 }}
             className="relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition overflow-hidden cursor-pointer"
         >
-            {/* 🔥 YOUTUBE-STYLE THUMBNAIL HEADER */}
             <div
                 className="h-32 w-full"
                 style={{
