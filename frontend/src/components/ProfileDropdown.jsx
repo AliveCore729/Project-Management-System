@@ -1,10 +1,9 @@
 // frontend/src/components/ProfileDropdown.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { LogOut, User } from "lucide-react";
-import API from "../api";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function ProfileDropdown({ teacher }) {
+export default function ProfileDropdown({ teacher, onLogout }) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -24,9 +23,9 @@ export default function ProfileDropdown({ teacher }) {
   }, []);
 
   async function logout() {
-    await API.post("/auth/logout").catch(() => {});
-    window.location.href = "/";
+    await onLogout?.();
   }
+
 
   return (
     <div className="relative" ref={dropdownRef}>

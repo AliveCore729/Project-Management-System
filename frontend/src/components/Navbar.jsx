@@ -5,7 +5,7 @@ import DarkModeToggle from "./DarkModeToggle";
 import API from "../api";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function Navbar({ teacher, onCreate, onSelectGroup }) {
+export default function Navbar({ teacher, onCreate, onSelectGroup, onLogout }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState({ groups: [], students: [] });
   const [open, setOpen] = useState(false);
@@ -161,7 +161,7 @@ export default function Navbar({ teacher, onCreate, onSelectGroup }) {
           <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block"></div>
           
           <DarkModeToggle />
-          <ProfileDropdown teacher={teacher} />
+          <ProfileDropdown teacher={teacher} onLogout={onLogout} />
         </div>
       </div>
     </header>

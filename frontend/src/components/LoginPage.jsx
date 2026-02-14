@@ -1,16 +1,31 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import API from "../api";
 import { motion } from "framer-motion";
 
 export default function LoginPage({ onLogin }) {
+  const googleInitialized = useRef(false);
+
   useEffect(() => {
+    // 🔒 Prevent multiple initializations
+    if (googleInitialized.current) return;
+    googleInitialized.current = true;
+
+    // 🔒 If script already exists, don't add again
+    if (document.getElementById("google-gsi-script")) return;
+
     const script = document.createElement("script");
+    script.id = "google-gsi-script";
     script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
+
     script.onload = () => {
+      if (!window.google) return;
+
       window.google.accounts.id.initialize({
         client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
         callback: handleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true,
       });
 
       window.google.accounts.id.renderButton(
@@ -22,47 +37,36 @@ export default function LoginPage({ onLogin }) {
         }
       );
     };
+
     document.body.appendChild(script);
+
+    // ✅ CLEANUP (CRITICAL)
+    return () => {
+      try {
+        window.google?.accounts.id.cancel();
+      } catch {}
+    };
   }, []);
 
   async function handleCredentialResponse(resp) {
-  try {
-    // Send ID token to backend
-    const res = await API.post("/auth/google", { id_token: resp.credential });
+    try {
+      await API.post("/auth/google", { id_token: resp.credential });
 
-    // Store token in localStorage for persistence across page refreshes
-    if (res.data.token) {
-      localStorage.setItem("authToken", res.data.token);
+      const me = await API.get("/auth/me");
+      onLogin(me.data.teacher);
+    } catch (err) {
+      alert(err.response?.data?.error || "Login failed");
     }
-
-    // Wait 100ms to ensure cookie is stored (important for Chrome)
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Verify cookie exists by calling /auth/me
-    const me = await API.get("/auth/me");
-
-    // Store teacher data in localStorage
-    localStorage.setItem("teacher", JSON.stringify(me.data.teacher));
-
-    // Login successful
-    onLogin(me.data.teacher);
-  } catch (err) {
-    alert(err.response?.data?.error || "Login failed");
   }
-}
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-
-      {/* Animated Login Card */}
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35 }}
         className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8"
       >
-        {/* YouTube-style logo circle */}
         <motion.div
           initial={{ scale: 0.6 }}
           animate={{ scale: 1 }}
@@ -72,7 +76,6 @@ export default function LoginPage({ onLogin }) {
           P
         </motion.div>
 
-        {/* Title */}
         <h2 className="text-2xl font-bold text-center mt-4 text-gray-800 dark:text-white">
           Project Management Portal
         </h2>
@@ -81,12 +84,7 @@ export default function LoginPage({ onLogin }) {
           Login using your registered Google account
         </p>
 
-        {/* Google Button Container */}
         <div id="google-login-btn" className="flex justify-center mt-8"></div>
-
-        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">
-          Only authorized teacher emails can access the dashboard.
-        </p>
       </motion.div>
     </div>
   );

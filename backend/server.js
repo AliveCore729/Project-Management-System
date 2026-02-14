@@ -43,6 +43,18 @@ mongoose
 // Auth route
 app.post("/auth/google", googleSignIn);
 
+app.post("/auth/logout", (req, res) => {
+  res.clearCookie("session", {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    path: "/",
+  });
+
+  res.json({ ok: true });
+});
+
+
 // Auth middleware
 function authMiddleware(req, res, next) {
   const token =

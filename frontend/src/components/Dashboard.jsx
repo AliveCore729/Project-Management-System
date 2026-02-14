@@ -8,7 +8,7 @@ import Sidebar from "./Sidebar";
 import SkeletonGrid from "./SkeletonGrid";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function Dashboard({ teacher }) {
+export default function Dashboard({ teacher, onLogout }) {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState(null);
@@ -56,7 +56,12 @@ export default function Dashboard({ teacher }) {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans selection:bg-red-100 dark:selection:bg-red-900/30">
 
       {/* Navbar Fixed */}
-      <Navbar teacher={teacher} onCreate={createGroup} onSelectGroup={(g) => setActive(g)} />
+      <Navbar
+        teacher={teacher}
+        onCreate={createGroup}
+        onSelectGroup={(g) => setActive(g)}
+        onLogout={onLogout}
+      />
 
       <div className="flex pt-16">
 

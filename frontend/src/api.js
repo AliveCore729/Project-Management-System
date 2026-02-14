@@ -23,10 +23,10 @@ API.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response && err.response.status === 401) {
-      console.warn("⛔ Session expired. Redirecting to login...");
+      console.warn("⛔ Session expired. Returning to login state...");
       localStorage.removeItem("authToken");
       localStorage.removeItem("teacher");
-      window.location.href = "/";
+      window.dispatchEvent(new Event("auth:unauthorized"));
     }
     return Promise.reject(err);
   }
