@@ -3,11 +3,29 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      (() => {
+        try {
+          const savedTheme = localStorage.getItem("pm_theme");
+          const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const isDark = savedTheme ? savedTheme === "dark" : prefersDark;
+
+          document.documentElement.classList.toggle("dark", isDark);
+          document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+        } catch {}
+      })();
+    </script>
     <title>PMS - Teacher Dashboard</title>
-    <script type="module" crossorigin src="/assets/index-BzjhSlOQ.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-sJZLRfDq.css">
+    <script type="module" crossorigin src="/assets/index-BR18MU9Z.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BVH3vHRx.css">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>

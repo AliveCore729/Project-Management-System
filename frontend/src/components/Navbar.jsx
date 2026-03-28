@@ -1,165 +1,171 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Search, Mic, Bell, Menu } from "lucide-react"; // Added standard icons
-import ProfileDropdown from "./ProfileDropdown";
-import DarkModeToggle from "./DarkModeToggle";
-import API from "../api";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useRef, useState } from "react";
+import { Plus, Search } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { toast } from "react-hot-toast";
 
-export default function Navbar({ teacher, onCreate, onSelectGroup, onLogout }) {
+import API from "../api";
+import DarkModeToggle from "./DarkModeToggle";
+import ProfileDropdown from "./ProfileDropdown";
+
+export default function Navbar({
+  teacher,
+  onCreate,
+  onSelectGroup,
+  onLogout,
+  viewLabel = "Dashboard",
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState({ groups: [], students: [] });
   const [open, setOpen] = useState(false);
   const searchRef = useRef(null);
 
-  async function handleSearch(q) {
-    setQuery(q);
-    if (!q.trim()) {
+  async function handleSearch(nextQuery) {
+    setQuery(nextQuery);
+
+    if (!nextQuery.trim()) {
       setResults({ groups: [], students: [] });
       return;
     }
 
     try {
-      const res = await API.get(`/search?q=${q}`);
-      setResults(res.data);
-    } catch (err) {
-      console.error("Search error:", err);
+      const response = await API.get(`/search?q=${nextQuery}`);
+      setResults(response.data);
+    } catch (error) {
+      console.error("Search error:", error);
     }
   }
 
-  // Close search dropdown on click outside
   useEffect(() => {
-    function handleClick(e) {
-      if (searchRef.current && !searchRef.current.contains(e.target)) {
+    function handleClick(event) {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
         setOpen(false);
       }
     }
+
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  return (
-    <header className="fixed top-0 left-0 w-full z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-sm border-b border-gray-200 dark:border-gray-800 h-16 transition-all duration-300">
-      <div className="w-full h-full px-4 flex items-center justify-between gap-4">
+  async function openStudentGroup(student) {
+    try {
+      const response = await API.get(`/student/${student.regNo}/group`);
+      const nextGroup = response.data.group;
 
-        {/* Logo Area */}
-        <div className="flex items-center gap-4 min-w-[200px]">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white font-bold shadow-lg shadow-red-500/30">
-              P
-            </div>
-            <span className="hidden md:block font-bold text-lg text-gray-800 dark:text-white tracking-tight">
-              Project Management
-            </span>
+      if (nextGroup) {
+        onSelectGroup(nextGroup);
+      } else {
+        toast.error("This student is not assigned to any group");
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      toast.error("Unable to open this student right now");
+    } finally {
+      setOpen(false);
+      setQuery("");
+    }
+  }
+
+  return (
+    <header className="fixed left-0 right-0 top-0 z-50 border-b border-[rgba(232,221,209,0.9)] bg-[rgba(255,251,246,0.92)] backdrop-blur-xl dark:border-slate-800 dark:bg-[rgba(11,10,18,0.9)] lg:left-[108px] xl:left-[280px]">
+      <div className="mx-auto flex h-[82px] max-w-[1680px] items-center gap-4 px-4 lg:px-6">
+        <div className="min-w-0">
+          <div className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
+            {viewLabel}
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-[11px] font-medium text-[#94867b] dark:text-slate-400">
+            <span className="text-[#b39f8e] dark:text-slate-500">ProjectX</span>
+            <span>&gt;</span>
+            <span>{viewLabel}</span>
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="flex-1 max-w-2xl relative" ref={searchRef}>
-          <div className="relative group">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition-colors">
-              <Search size={18} />
-            </div>
+        <div className="relative hidden max-w-2xl flex-1 lg:block" ref={searchRef}>
+          <div className="relative">
+            <Search
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-[#b2a395] dark:text-slate-500"
+            />
             <input
               value={query}
-              onChange={(e) => {
-                handleSearch(e.target.value);
+              onChange={(event) => {
+                handleSearch(event.target.value);
                 setOpen(true);
               }}
               onFocus={() => setOpen(true)}
-              placeholder="Search projects, groups or students..."
-              className="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100
-                       rounded-full pl-10 pr-12 py-2.5 
-                       border-2 border-transparent focus:bg-white dark:focus:bg-gray-800 
-                       focus:border-red-100 dark:focus:border-red-900/30 focus:ring-4 focus:ring-red-50 dark:focus:ring-red-900/10 
-                       transition-all outline-none placeholder-gray-500"
+              placeholder="Search tasks, groups, students..."
+              className="w-full rounded-[18px] border border-[#e5d9cc] bg-[#fbf6ef] py-3 pl-11 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-[#b09f91] focus:border-[#f0c7d5] focus:bg-white focus:ring-4 focus:ring-[#f8dce5] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-slate-700 dark:focus:bg-slate-950 dark:focus:ring-slate-800"
             />
-            {/* Mic Icon */}
-            <button className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 transition-colors">
-              <Mic size={16} />
-            </button>
           </div>
 
-          {/* 🔍 SEARCH DROPDOWN */}
           <AnimatePresence>
-            {open && (results.groups?.length > 0 || results.students?.length > 0) && (
+            {open && (results.groups?.length > 0 || results.students?.length > 0) ? (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute mt-2 w-full bg-white dark:bg-gray-800 
-                           shadow-xl rounded-2xl border border-gray-100 dark:border-gray-700 p-2 z-50 overflow-hidden"
+                exit={{ opacity: 0, y: 8 }}
+                className="absolute mt-3 w-full overflow-hidden rounded-[24px] border border-[#e5d9cc] bg-[rgba(255,252,247,0.98)] p-2 shadow-[0_30px_70px_-38px_rgba(35,26,16,0.35)] dark:border-slate-800 dark:bg-slate-950/96"
               >
-                {/* Groups */}
-                {results.groups.length > 0 && (
-                  <div className="mb-2">
-                    <div className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">
+                {results.groups.length > 0 ? (
+                  <div>
+                    <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#94867b] dark:text-slate-400">
                       Groups
                     </div>
-                    {results.groups.map((g) => (
-                      <div
-                        key={g._id}
+                    {results.groups.map((group) => (
+                      <button
+                        key={group._id}
+                        type="button"
                         onClick={() => {
-                          onSelectGroup(g);
+                          onSelectGroup(group);
                           setOpen(false);
                           setQuery("");
                         }}
-                        className="px-3 py-2.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-700 dark:text-gray-200
-                                   rounded-xl cursor-pointer transition-colors text-sm font-medium"
+                        className="flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-[#fbf2f5] hover:text-[#f05c87] dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white"
                       >
-                        {g.title}
-                      </div>
+                        <span>{group.title}</span>
+                        <span className="text-xs text-[#b09f91] dark:text-slate-500">
+                          {group.studentRegs?.length || 0} students
+                        </span>
+                      </button>
                     ))}
                   </div>
-                )}
+                ) : null}
 
-                {/* Students */}
-                {results.students.length > 0 && (
-                  <div>
-                    <div className="text-xs font-semibold text-gray-500 uppercase px-3 py-2 mt-2">
+                {results.students.length > 0 ? (
+                  <div className={results.groups.length > 0 ? "mt-1" : ""}>
+                    <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-[#94867b] dark:text-slate-400">
                       Students
                     </div>
-                    {results.students.map((s) => (
-                      <div
-                        key={s.regNo}
-                        className="px-3 py-2.5 hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-700 dark:text-gray-200
-                                   rounded-xl cursor-pointer transition-colors text-sm font-medium"
-                        onClick={async () => {
-                          const res = await API.get(`/student/${s.regNo}/group`);
-                          const group = res.data.group;
-
-                          if (group) {
-                            onSelectGroup(group);
-                          } else {
-                            alert("This student is not assigned to any group.");
-                          }
-
-                          setOpen(false);
-                          setQuery("");
-                        }}
+                    {results.students.map((student) => (
+                      <button
+                        key={student.regNo}
+                        type="button"
+                        onClick={() => openStudentGroup(student)}
+                        className="flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-[#fbf2f5] hover:text-[#f05c87] dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-white"
                       >
-                        {s.name} <span className="text-gray-400 text-xs">({s.regNo})</span>
-                      </div>
+                        <span className="truncate">
+                          {student.name}{" "}
+                          <span className="text-xs text-[#b09f91] dark:text-slate-500">
+                            ({student.regNo})
+                          </span>
+                        </span>
+                      </button>
                     ))}
                   </div>
-                )}
+                ) : null}
               </motion.div>
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
 
-        {/* Right controls */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="ml-auto flex items-center gap-2">
           <button
+            type="button"
             onClick={onCreate}
-            className="hidden md:flex items-center gap-2 px-4 py-2 
-                       rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900
-                       font-medium text-sm hover:shadow-lg hover:scale-105 transition-all"
+            className="inline-flex items-center gap-2 rounded-[16px] border border-[#f2d7e1] bg-[#fff3f7] px-3.5 py-2.5 text-sm font-semibold text-[#b43f6b] transition hover:bg-[#ffe7f0] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-950"
           >
-            + Create
+            <Plus size={16} />
+            <span className="hidden sm:inline">New Group</span>
           </button>
-
-          <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block"></div>
-          
           <DarkModeToggle />
           <ProfileDropdown teacher={teacher} onLogout={onLogout} />
         </div>

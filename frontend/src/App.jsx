@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import LoginPage from "./components/LoginPage";
 import Dashboard from "./components/Dashboard";
+import AdminPanel from "./components/AdminPanel";
 import API from "./api";
 
 export default function App() {
-  const [teacher, setTeacher] = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const hasCheckedSession = useRef(false);
 
@@ -15,9 +16,9 @@ export default function App() {
     const checkSession = async () => {
       try {
         const res = await API.get("/auth/me");
-        setTeacher(res.data.teacher);
+        setUser(res.data.user || res.data.teacher || null);
       } catch {
-        setTeacher(null);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -28,7 +29,7 @@ export default function App() {
 
   useEffect(() => {
     function handleUnauthorized() {
-      setTeacher(null);
+      setUser(null);
       setLoading(false);
     }
 
@@ -44,21 +45,27 @@ export default function App() {
     } catch (err) {
       console.error("Logout failed", err);
     } finally {
-      setTeacher(null);
+      setUser(null);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
+      <div className="flex min-h-screen items-center justify-center bg-[#f4eee6] text-slate-900 dark:bg-[#09090f] dark:text-slate-100">
+        <div className="rounded-[20px] border border-[#e6dbcf] bg-[rgba(255,252,247,0.96)] px-6 py-4 text-sm font-semibold shadow-[0_24px_60px_-38px_rgba(35,26,16,0.26)] dark:border-slate-800 dark:bg-slate-950/92">
+          Loading...
+        </div>
       </div>
     );
   }
 
-  return teacher ? (
-    <Dashboard teacher={teacher} onLogout={handleLogout} />
+  return user ? (
+    user.role === "admin" ? (
+      <AdminPanel user={user} onLogout={handleLogout} />
+    ) : (
+      <Dashboard teacher={user.teacher || user} onLogout={handleLogout} />
+    )
   ) : (
-    <LoginPage onLogin={setTeacher} />
+    <LoginPage onLogin={setUser} />
   );
 }

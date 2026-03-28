@@ -4,11 +4,20 @@ const schema = new mongoose.Schema({
   title: String,
   subtitle: String,
   banner: String,
-  teacherId: mongoose.Schema.Types.ObjectId,
-  studentRegs: [String],
-  
+  teacherId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+  },
+  studentRegs: {
+    type: [String],
+    default: [],
+  },
   groupMarks: {
     type: Number,
+    default: null,
+  },
+  groupMarksUpdatedAt: {
+    type: Date,
     default: null,
   },
 });

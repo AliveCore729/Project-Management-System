@@ -1,55 +1,44 @@
-// frontend/src/components/DarkModeToggle.jsx
 import React, { useEffect, useState } from "react";
-import { Sun, Moon } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { motion } from "framer-motion";
 
+function getInitialTheme() {
+  if (typeof document !== "undefined") {
+    return document.documentElement.classList.contains("dark");
+  }
+
+  return false;
+}
+
+function applyTheme(isDark) {
+  document.documentElement.classList.toggle("dark", isDark);
+  document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+  localStorage.setItem("pm_theme", isDark ? "dark" : "light");
+}
 
 export default function DarkModeToggle() {
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(getInitialTheme);
 
   useEffect(() => {
-    const saved = localStorage.getItem("pm_theme");
-
-    if (saved === "dark") {
-      document.documentElement.classList.add("dark");
-      setIsDark(true);
-    } else if (saved === "light") {
-      document.documentElement.classList.remove("dark");
-      setIsDark(false);
-    } else {
-      const prefers = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setIsDark(prefers);
-      if (prefers) document.documentElement.classList.add("dark");
-    }
-  }, []);
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("pm_theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("pm_theme", "light");
-    }
+    applyTheme(isDark);
   }, [isDark]);
 
   return (
     <motion.button
-      onClick={() => setIsDark((prev) => !prev)}
+      type="button"
+      onClick={() => setIsDark((current) => !current)}
       aria-label="Toggle dark mode"
-      whileHover={{ scale: 1.15 }}
-      whileTap={{ scale: 0.9 }}
-      transition={{ type: "spring", stiffness: 300, damping: 12 }}
-      className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 
-                 hover:bg-gray-200 dark:hover:bg-gray-700
-                 flex items-center justify-center shadow-sm
-                 text-gray-700 dark:text-gray-200"
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{ type: "spring", stiffness: 320, damping: 18 }}
+      className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-[#e4d6c8] bg-[#fbf6ef] text-slate-700 shadow-[0_14px_24px_-20px_rgba(35,26,16,0.65)] transition hover:border-[#f0c7d5] hover:text-[#b43f6b] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:text-white"
     >
       <motion.div
         key={isDark ? "sun" : "moon"}
         initial={{ rotate: -90, opacity: 0 }}
         animate={{ rotate: 0, opacity: 1 }}
         exit={{ rotate: 90, opacity: 0 }}
-        transition={{ duration: 0.25 }}
+        transition={{ duration: 0.22 }}
       >
         {isDark ? <Sun size={18} /> : <Moon size={18} />}
       </motion.div>

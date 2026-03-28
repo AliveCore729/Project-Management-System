@@ -21,7 +21,7 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'], // Standard modern font
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
       }
     },
   },

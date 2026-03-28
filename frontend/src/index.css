@@ -2,5 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --app-bg: #f4eee6;
+  --app-panel: #fffdfa;
+  --app-panel-soft: #f8f2ea;
+  --app-border: #e8ddd1;
+  --app-text: #20263a;
+  --app-muted: #8a7f74;
+  --nav-bg: #181629;
+  --nav-bg-soft: #231f38;
+  --nav-border: rgba(255, 255, 255, 0.08);
+  --nav-text: #ece7f8;
+  --nav-muted: #8d86a7;
+  --nav-active: rgba(240, 92, 135, 0.16);
+  --nav-active-border: #f05c87;
+  --accent-rose: #f05c87;
+  --accent-cyan: #35c7f3;
+  --accent-amber: #f3b14b;
+  --accent-emerald: #34d399;
+}
 
-html, body, #root { height: 100%; }
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html {
+  background: var(--app-bg);
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.55), transparent 26%),
+    linear-gradient(180deg, #f7f2ea 0%, #f4eee6 100%);
+  color: var(--app-text);
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+html.dark {
+  color-scheme: dark;
+  background: #09090f;
+}
+
+html.dark body {
+  background:
+    radial-gradient(circle at top, rgba(91, 77, 136, 0.18), transparent 26%),
+    linear-gradient(180deg, #0c0b13 0%, #09090f 100%);
+  color: #f8fafc;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 126, 111, 0.45) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(140, 126, 111, 0.35);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html.dark * {
+  scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+}
+
+html.dark *::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+::selection {
+  background: rgba(240, 92, 135, 0.18);
+  color: inherit;
+}

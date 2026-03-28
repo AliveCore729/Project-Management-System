@@ -1,6 +1,6 @@
 const { OAuth2Client } = require("google-auth-library");
 const jwt = require("jsonwebtoken");
-const Teacher = require("../models/Teacher");
+const { resolveAuthenticatedUser } = require("../utils/auth");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -14,11 +14,14 @@ async function googleSignIn(req, res) {
     });
 
     const payload = ticket.getPayload();
-    const teacher = await Teacher.findOne({ email: payload.email });
-    if (!teacher) return res.status(403).json({ error: "Unauthorized" });
+    const authUser = await resolveAuthenticatedUser({
+      email: payload.email,
+      name: payload.name,
+    });
+    if (!authUser) return res.status(403).json({ error: "Unauthorized" });
 
     const token = jwt.sign(
-      { email: teacher.email, name: teacher.name },
+      { email: authUser.email, name: authUser.name, role: authUser.role },
       process.env.JWT_SECRET,
       { expiresIn: "8h" }
     );
@@ -32,7 +35,17 @@ async function googleSignIn(req, res) {
       path: "/",
     });
 
-    res.json({ ok: true });
+    res.json({
+      ok: true,
+      user: {
+        id: authUser.id,
+        role: authUser.role,
+        email: authUser.email,
+        name: authUser.name,
+        teacherId: authUser.teacherId,
+        teacher: authUser.teacher,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Auth failed" });

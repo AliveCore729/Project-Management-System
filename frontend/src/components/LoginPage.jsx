@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from "react";
-import API from "../api";
 import { motion } from "framer-motion";
+import { toast } from "react-hot-toast";
+
+import API from "../api";
 
 export default function LoginPage({ onLogin }) {
   const googleInitialized = useRef(false);
@@ -53,35 +55,35 @@ export default function LoginPage({ onLogin }) {
       await API.post("/auth/google", { id_token: resp.credential });
 
       const me = await API.get("/auth/me");
-      onLogin(me.data.teacher);
+      onLogin(me.data.user || me.data.teacher);
     } catch (err) {
-      alert(err.response?.data?.error || "Login failed");
+      toast.error(err.response?.data?.error || "Login failed");
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#f4eee6] px-4 dark:bg-[#09090f]">
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.35 }}
-        className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8"
+        className="w-full max-w-md rounded-[24px] border border-[#e6dbcf] bg-[rgba(255,252,247,0.96)] p-8 shadow-[0_24px_60px_-38px_rgba(35,26,16,0.26)] dark:border-slate-800 dark:bg-slate-950/92"
       >
         <motion.div
           initial={{ scale: 0.6 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.1 }}
-          className="mx-auto w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg text-white text-3xl font-bold"
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f05c87] text-3xl font-bold text-white shadow-[0_20px_40px_-24px_rgba(240,92,135,0.75)]"
         >
           P
         </motion.div>
 
-        <h2 className="text-2xl font-bold text-center mt-4 text-gray-800 dark:text-white">
+        <h2 className="mt-4 text-center text-2xl font-bold text-slate-900 dark:text-white">
           Project Management Portal
         </h2>
 
-        <p className="text-center text-gray-500 dark:text-gray-300 mt-2 text-sm">
-          Login using your registered Google account
+        <p className="mt-2 text-center text-sm text-[#8b7e73] dark:text-slate-400">
+          Login using your registered teacher or admin Google account
         </p>
 
         <div id="google-login-btn" className="flex justify-center mt-8"></div>
