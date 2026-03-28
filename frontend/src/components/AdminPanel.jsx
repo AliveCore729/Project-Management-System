@@ -51,6 +51,14 @@ function makeTeacherDraft(teacher) {
   };
 }
 
+function makeAdminDraft(admin) {
+  return {
+    name: admin?.name || "",
+    email: admin?.email || "",
+    isActive: admin?.isActive ?? true,
+  };
+}
+
 function makeGroupDraft(group, teacherId = "") {
   return {
     title: group?.title || "",
@@ -315,6 +323,94 @@ function TeacherEditor({ teacher, onSave, onDelete, onOpenStudents }) {
         ) : null}
       </div>
     </SectionCard>
+  );
+}
+
+function AdminEditorCard({ admin, onSave, onDelete, isBootstrap = false }) {
+  const [draft, setDraft] = useState(makeAdminDraft(admin));
+
+  useEffect(() => {
+    setDraft(makeAdminDraft(admin));
+  }, [admin]);
+
+  return (
+    <div className="rounded-[20px] border border-[#ece1d6] bg-[#fcf8f1] p-4 dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="text-base font-semibold text-slate-900 dark:text-white">
+            {admin.name || "Unnamed Admin"}
+          </h4>
+          <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+            {admin.email}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={cls(
+              "rounded-full px-3 py-1.5 text-xs font-medium shadow-sm",
+              admin.isActive
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            )}
+          >
+            {admin.isActive ? "Active" : "Inactive"}
+          </span>
+          {isBootstrap ? (
+            <span className="rounded-full border border-[#f0c7d5] bg-[#fff2f6] px-3 py-1.5 text-xs font-medium text-[#b43f6b] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+              Recovery
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <Field label="Name">
+          <Input
+            value={draft.name}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, name: event.target.value }))
+            }
+            placeholder="Admin name"
+          />
+        </Field>
+        <Field label="Email">
+          <Input
+            type="email"
+            value={draft.email}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, email: event.target.value }))
+            }
+            placeholder="admin@example.com"
+          />
+        </Field>
+        <Field label="Status">
+          <Select
+            value={draft.isActive ? "active" : "inactive"}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                isActive: event.target.value === "active",
+              }))
+            }
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </Select>
+        </Field>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button className={secondaryButton} onClick={() => onSave(admin._id, draft)}>
+          <Save size={16} />
+          Save Admin
+        </button>
+        <button className={dangerButton} onClick={() => onDelete(admin)}>
+          <Trash2 size={16} />
+          Delete Admin
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -715,12 +811,14 @@ export default function AdminPanel({ user, onLogout }) {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [adminSearch, setAdminSearch] = useState("");
   const [teacherSearch, setTeacherSearch] = useState("");
   const [groupSearch, setGroupSearch] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
   const [activeTeacherId, setActiveTeacherId] = useState("");
   const [activeView, setActiveView] = useState("dashboard");
   const [createPanel, setCreatePanel] = useState("");
+  const [adminDraft, setAdminDraft] = useState(makeAdminDraft());
   const [teacherDraft, setTeacherDraft] = useState(makeTeacherDraft());
   const [groupDraft, setGroupDraft] = useState(makeGroupDraft(null));
   const [studentDraft, setStudentDraft] = useState(makeStudentDraft());
@@ -768,6 +866,8 @@ export default function AdminPanel({ user, onLogout }) {
     );
   }, [activeTeacherId]);
 
+  const admins = overview?.admins || [];
+  const bootstrapAdminEmails = overview?.bootstrapAdminEmails || [];
   const teachers = overview?.teachers || [];
   const groups = overview?.groups || [];
   const students = overview?.students || [];
@@ -779,6 +879,10 @@ export default function AdminPanel({ user, onLogout }) {
   });
 
   const activeTeacher = teachers.find((teacher) => teacher._id === activeTeacherId) || null;
+  const filteredAdmins = admins.filter((admin) => {
+    const haystack = `${admin.name} ${admin.email}`.toLowerCase();
+    return haystack.includes(adminSearch.toLowerCase());
+  });
   const filteredTeachers = teachers.filter((teacher) => {
     const haystack = `${teacher.name} ${teacher.email} ${teacher.teacherId}`.toLowerCase();
     return haystack.includes(teacherSearch.toLowerCase());
@@ -819,6 +923,50 @@ export default function AdminPanel({ user, onLogout }) {
 
       return left.teacherId ? 1 : -1;
     });
+
+  async function handleCreateAdmin() {
+    try {
+      const response = await API.post("/admin/admins", adminDraft);
+      toast.success("Admin created");
+      setAdminDraft(makeAdminDraft());
+      setCreatePanel("");
+      await fetchOverview(activeTeacherId);
+      if (response.data.admin?._id) {
+        setActiveView("admins");
+      }
+    } catch (error) {
+      toast.error(extractError(error, "Failed to create admin"));
+    }
+  }
+
+  async function handleUpdateAdmin(id, payload) {
+    try {
+      await API.put(`/admin/admins/${id}`, payload);
+      toast.success("Admin updated");
+      await fetchOverview(activeTeacherId);
+    } catch (error) {
+      toast.error(extractError(error, "Failed to update admin"));
+    }
+  }
+
+  function handleDeleteAdmin(admin) {
+    openConfirmDialog({
+      title: "Delete Admin",
+      description: `Delete ${admin.email}? This removes their database admin access.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+      onConfirm: async () => {
+        try {
+          await API.delete(`/admin/admins/${admin._id}`);
+          toast.success("Admin deleted");
+          await fetchOverview(activeTeacherId);
+        } catch (error) {
+          toast.error(extractError(error, "Failed to delete admin"));
+          throw error;
+        }
+      },
+    });
+  }
 
   async function handleCreateTeacher() {
     try {
@@ -1118,6 +1266,68 @@ export default function AdminPanel({ user, onLogout }) {
   function renderCreatePanel() {
     if (!createPanel) return null;
 
+    if (createPanel === "admin") {
+      return (
+        <SectionCard
+          eyebrow="Create"
+          title="New Admin"
+          actions={
+            <>
+              <button className={secondaryButton} onClick={() => setCreatePanel("")}>
+                Close
+              </button>
+              <button className={primaryButton} onClick={handleCreateAdmin}>
+                <Plus size={16} />
+                Create Admin
+              </button>
+            </>
+          }
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            <Field label="Name">
+              <Input
+                value={adminDraft.name}
+                onChange={(event) =>
+                  setAdminDraft((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
+                placeholder="Admin name"
+              />
+            </Field>
+            <Field label="Email">
+              <Input
+                type="email"
+                value={adminDraft.email}
+                onChange={(event) =>
+                  setAdminDraft((current) => ({
+                    ...current,
+                    email: event.target.value,
+                  }))
+                }
+                placeholder="admin@example.com"
+              />
+            </Field>
+            <Field label="Status">
+              <Select
+                value={adminDraft.isActive ? "active" : "inactive"}
+                onChange={(event) =>
+                  setAdminDraft((current) => ({
+                    ...current,
+                    isActive: event.target.value === "active",
+                  }))
+                }
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </Select>
+            </Field>
+          </div>
+        </SectionCard>
+      );
+    }
+
     if (createPanel === "teacher") {
       return (
         <SectionCard
@@ -1362,7 +1572,13 @@ export default function AdminPanel({ user, onLogout }) {
       id: "dashboard",
       label: "Dashboard",
       Icon: LayoutDashboard,
-      count: overview?.stats?.teacherCount || 0,
+      count: overview?.stats?.adminCount || 0,
+    },
+    {
+      id: "admins",
+      label: "Admins",
+      Icon: ShieldCheck,
+      count: overview?.stats?.adminCount || 0,
     },
     {
       id: "teachers",
@@ -1452,7 +1668,13 @@ export default function AdminPanel({ user, onLogout }) {
   function renderDashboardView() {
     return (
       <div className="space-y-6">
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <StatCard
+            icon={ShieldCheck}
+            label="Admins"
+            value={overview?.stats?.adminCount || 0}
+            accent="linear-gradient(135deg, #f05c87, #fb7185)"
+          />
           <StatCard
             icon={Users}
             label="Teachers"
@@ -1539,6 +1761,70 @@ export default function AdminPanel({ user, onLogout }) {
             )}
           </SectionCard>
         </div>
+      </div>
+    );
+  }
+
+  function renderAdminsView() {
+    return (
+      <div className="space-y-6">
+        <SectionCard
+          eyebrow="Admins"
+          title="Access Control"
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <div className="relative">
+                <Search
+                  size={16}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <Input
+                  value={adminSearch}
+                  onChange={(event) => setAdminSearch(event.target.value)}
+                  placeholder="Search admins"
+                  className="w-[250px] pl-11"
+                />
+              </div>
+              <button className={primaryButton} onClick={() => toggleCreatePanel("admin")}>
+                <Plus size={16} />
+                New Admin
+              </button>
+            </div>
+          }
+        >
+          {filteredAdmins.length === 0 ? (
+            <EmptyState message="No database admins found yet." />
+          ) : (
+            <div className="space-y-4">
+              {filteredAdmins.map((admin) => (
+                <AdminEditorCard
+                  key={admin._id}
+                  admin={admin}
+                  isBootstrap={bootstrapAdminEmails.includes((admin.email || "").toLowerCase())}
+                  onSave={handleUpdateAdmin}
+                  onDelete={handleDeleteAdmin}
+                />
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard eyebrow="Recovery" title="Bootstrap Admins">
+          {bootstrapAdminEmails.length === 0 ? (
+            <EmptyState message="No SUPER_ADMIN_EMAILS recovery addresses are configured." />
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {bootstrapAdminEmails.map((email) => (
+                <span
+                  key={email}
+                  className="rounded-full border border-[#f0c7d5] bg-[#fff2f6] px-3 py-2 text-xs font-semibold text-[#b43f6b] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+                >
+                  {email}
+                </span>
+              ))}
+            </div>
+          )}
+        </SectionCard>
       </div>
     );
   }
@@ -1783,10 +2069,10 @@ export default function AdminPanel({ user, onLogout }) {
               icon={Download}
               label="Export"
               title="Current Workbook"
-              description="Download all teachers, groups, and students in one Excel file."
+              description="Download admins, teachers, groups, and students in one Excel file."
             >
               <div className="flex flex-wrap gap-2">
-                {["Teachers", "Groups", "Students"].map((sheet) => (
+                {["Admins", "Teachers", "Groups", "Students"].map((sheet) => (
                   <span
                     key={sheet}
                     className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#8b7e73] shadow-sm dark:bg-slate-950 dark:text-slate-300"
@@ -1859,6 +2145,7 @@ export default function AdminPanel({ user, onLogout }) {
 
   const viewMeta = {
     dashboard: { title: "Dashboard" },
+    admins: { title: "Admins" },
     teachers: { title: "Teachers" },
     groups: { title: "Groups" },
     students: { title: "Students" },
@@ -1938,6 +2225,10 @@ export default function AdminPanel({ user, onLogout }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button className={secondaryButton} onClick={() => toggleCreatePanel("admin")}>
+              <ShieldCheck size={16} />
+              <span className="hidden sm:inline">Admin</span>
+            </button>
             <button className={secondaryButton} onClick={() => toggleCreatePanel("teacher")}>
               <UserCog size={16} />
               <span className="hidden sm:inline">Teacher</span>
@@ -2049,6 +2340,7 @@ export default function AdminPanel({ user, onLogout }) {
             </AnimatePresence>
 
             {activeView === "dashboard" ? renderDashboardView() : null}
+            {activeView === "admins" ? renderAdminsView() : null}
             {activeView === "teachers" ? renderTeacherView() : null}
             {activeView === "groups" ? renderGroupsView() : null}
             {activeView === "students" ? renderStudentView() : null}

@@ -1,6 +1,9 @@
 const { OAuth2Client } = require("google-auth-library");
 const jwt = require("jsonwebtoken");
-const { resolveAuthenticatedUser } = require("../utils/auth");
+const {
+  getSessionCookieOptions,
+  resolveAuthenticatedUser,
+} = require("../utils/auth");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -27,13 +30,7 @@ async function googleSignIn(req, res) {
     );
 
     // ✅ FIXED COOKIE (NO DOMAIN)
-    res.cookie("session", token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 8 * 60 * 60 * 1000,
-      path: "/",
-    });
+    res.cookie("session", token, getSessionCookieOptions(8 * 60 * 60 * 1000));
 
     res.json({
       ok: true,

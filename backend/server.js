@@ -7,14 +7,19 @@ const multer = require("multer");
 const ExcelJS = require("exceljs");
 const jwt = require("jsonwebtoken");
 
+const Admin = require("./models/Admin");
 const Teacher = require("./models/Teacher");
 const Student = require("./models/Student");
 const Group = require("./models/Group");
 const { googleSignIn } = require("./controllers/authController");
 const {
+  findActiveAdminByEmail,
   findTeacherByEmail,
+  getBootstrapAdminEmails,
+  getSessionCookieBaseOptions,
   normalizeEmail,
   resolveAuthenticatedUser,
+  serializeAdmin,
   serializeTeacher,
 } = require("./utils/auth");
 
@@ -30,9 +35,24 @@ const upload = multer({
 
 app.use(express.json());
 app.use(cookieParser());
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173",
+    origin(origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Origin not allowed by CORS"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -55,6 +75,9 @@ function serializeSessionUser(user) {
     role: user.role,
     email: user.email,
     name: user.name,
+    adminId: user.adminId || "",
+    admin: user.admin || null,
+    isBootstrapAdmin: Boolean(user.isBootstrapAdmin),
     teacherId: user.teacherId || "",
     teacher: user.teacher,
   };
@@ -313,12 +336,14 @@ async function replaceStudentRegAcrossGroups(oldRegNo, newRegNo) {
 }
 
 async function buildAdminOverview() {
-  const [teachers, groups, students] = await Promise.all([
+  const [admins, teachers, groups, students] = await Promise.all([
+    Admin.find().sort({ isActive: -1, name: 1, email: 1 }),
     Teacher.find().sort({ name: 1, email: 1 }),
     Group.find().sort({ title: 1 }),
     Student.find().sort({ name: 1, regNo: 1 }),
   ]);
 
+  const serializedAdmins = admins.map(serializeAdmin);
   const serializedTeachers = teachers.map(serializeTeacher);
   const serializedStudents = students.map(serializeStudent);
   const studentsByReg = new Map(serializedStudents.map((student) => [student.regNo, student]));
@@ -372,12 +397,15 @@ async function buildAdminOverview() {
   );
 
   return {
+    admins: serializedAdmins,
+    bootstrapAdminEmails: getBootstrapAdminEmails(),
     teachers: teacherCards,
     groups: serializedGroups,
     students: serializedStudents,
     unassignedGroups,
     unassignedStudents,
     stats: {
+      adminCount: serializedAdmins.filter((admin) => admin.isActive).length,
       teacherCount: teacherCards.length,
       groupCount: serializedGroups.length,
       studentCount: serializedStudents.length,
@@ -387,15 +415,30 @@ async function buildAdminOverview() {
   };
 }
 
+async function getLastAdminProtectionError(admin, nextIsActive) {
+  const willDeactivate =
+    Boolean(admin?.isActive) && (nextIsActive === false || nextIsActive === null);
+
+  if (!willDeactivate) {
+    return null;
+  }
+
+  const activeAdminCount = await Admin.countDocuments({ isActive: true });
+  if (activeAdminCount > 1) {
+    return null;
+  }
+
+  if (getBootstrapAdminEmails().length > 0) {
+    return null;
+  }
+
+  return "Keep at least one active admin or configure SUPER_ADMIN_EMAILS for recovery access.";
+}
+
 app.post("/auth/google", googleSignIn);
 
 app.post("/auth/logout", (req, res) => {
-  res.clearCookie("session", {
-    httpOnly: true,
-    secure: false,
-    sameSite: "lax",
-    path: "/",
-  });
+  res.clearCookie("session", getSessionCookieBaseOptions());
 
   res.json({ ok: true });
 });
@@ -722,6 +765,23 @@ app.get("/admin/export/workbook", authMiddleware, requireAdmin, async (req, res)
   workbook.creator = "ProjectX";
   workbook.created = new Date();
 
+  const adminsSheet = workbook.addWorksheet("Admins");
+  adminsSheet.columns = [
+    { header: "Name", key: "name", width: 28 },
+    { header: "Email", key: "email", width: 34 },
+    { header: "Is Active", key: "isActive", width: 14 },
+    { header: "Created By", key: "createdByEmail", width: 34 },
+  ];
+  overview.admins.forEach((admin) => {
+    adminsSheet.addRow({
+      name: admin.name || "",
+      email: admin.email || "",
+      isActive: admin.isActive ? "Yes" : "No",
+      createdByEmail: admin.createdByEmail || "",
+    });
+  });
+  styleSheetHeader(adminsSheet);
+
   const teachersSheet = workbook.addWorksheet("Teachers");
   teachersSheet.columns = [
     { header: "Teacher ID", key: "teacherId", width: 18 },
@@ -1000,6 +1060,88 @@ app.get("/student/:regNo/group", authMiddleware, requireTeacher, async (req, res
 app.get("/admin/overview", authMiddleware, requireAdmin, async (req, res) => {
   const overview = await buildAdminOverview();
   res.json(overview);
+});
+
+app.post("/admin/admins", authMiddleware, requireAdmin, async (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  const name = String(req.body.name || "").trim();
+  const isActive = req.body.isActive !== false;
+
+  if (!email) {
+    return res.status(400).json({ error: "Admin email is required" });
+  }
+
+  const existingAdmin = await findActiveAdminByEmail(email);
+  if (existingAdmin) {
+    return res.status(400).json({ error: "An active admin with this email already exists" });
+  }
+
+  const duplicateAdmin = await Admin.findOne({
+    email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+  });
+  if (duplicateAdmin) {
+    return res.status(400).json({ error: "An admin with this email already exists" });
+  }
+
+  const admin = await Admin.create({
+    email,
+    name,
+    isActive,
+    createdByEmail: req.user.email,
+  });
+
+  res.status(201).json({ ok: true, admin: serializeAdmin(admin) });
+});
+
+app.put("/admin/admins/:id", authMiddleware, requireAdmin, async (req, res) => {
+  const admin = await Admin.findById(req.params.id);
+  if (!admin) {
+    return res.status(404).json({ error: "Admin not found" });
+  }
+
+  const nextEmail =
+    req.body.email !== undefined ? normalizeEmail(req.body.email) : admin.email;
+  if (!nextEmail) {
+    return res.status(400).json({ error: "Admin email is required" });
+  }
+
+  const duplicateAdmin = await Admin.findOne({
+    email: new RegExp(`^${nextEmail.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+  });
+  if (duplicateAdmin && duplicateAdmin._id.toString() !== admin._id.toString()) {
+    return res.status(400).json({ error: "An admin with this email already exists" });
+  }
+
+  const nextIsActive =
+    req.body.isActive !== undefined ? Boolean(req.body.isActive) : admin.isActive;
+  const protectionError = await getLastAdminProtectionError(admin, nextIsActive);
+  if (protectionError) {
+    return res.status(400).json({ error: protectionError });
+  }
+
+  admin.email = nextEmail;
+  if (req.body.name !== undefined) {
+    admin.name = String(req.body.name || "").trim();
+  }
+  admin.isActive = nextIsActive;
+  await admin.save();
+
+  res.json({ ok: true, admin: serializeAdmin(admin) });
+});
+
+app.delete("/admin/admins/:id", authMiddleware, requireAdmin, async (req, res) => {
+  const admin = await Admin.findById(req.params.id);
+  if (!admin) {
+    return res.status(404).json({ error: "Admin not found" });
+  }
+
+  const protectionError = await getLastAdminProtectionError(admin, false);
+  if (protectionError) {
+    return res.status(400).json({ error: protectionError });
+  }
+
+  await admin.deleteOne();
+  res.json({ ok: true, message: "Admin deleted" });
 });
 
 app.post("/admin/teachers", authMiddleware, requireAdmin, async (req, res) => {
